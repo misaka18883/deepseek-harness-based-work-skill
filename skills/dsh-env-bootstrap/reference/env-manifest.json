@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "kind": "dsh-work-env",
+  "exportedAt": "2026-09-29T14:40:56+08:00",
+  "exportedFrom": {
+    "profile": "tauri",
+    "platform": "win32",
+    "dshHome": "$DSH_HOME"
+  },
+  "readme": "机器无关的工作插件环境清单。迁移时以本文件为唯一事实源：export 重新生成，verify 校验，apply 重建。禁止在此写死绝对路径与 DSH 版本号。",
+  "layers": {
+    "host": {
+      "note": "桌面外壳 dsh-tauri 自带、以 link: 注入的包；其绝对路径绑定本机安装位置，【不可迁移】。新机器由桌面安装器重新注入。verify 只探测、不修复、不计入失败。",
+      "detectBy": "dsh-tauri*",
+      "packages": [
+        "dsh-tauri",
+        "dsh-tauri-archive",
+        "dsh-tauri-extension",
+        "dsh-tauri-model",
+        "dsh-tauri-pet",
+        "dsh-tauri-rightclick",
+        "dsh-tauri-scheduler",
+        "dsh-tauri-ssh",
+        "dsh-tauri-ui",
+        "dsh-tauri-worktree"
+      ]
+    },
+    "core": {
+      "note": "官方随版本发布的 bundle，不写版本号，跟随 DSH 升级自动更新。",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@deepseek-ai/dsh-experimental-agent-team-profile",
+        "@deepseek-ai/dsh-experimental-auto-review",
+        "@deepseek-ai/dsh-experimental-schedule-bundle",
+        "@deepseek-ai/dsh-experimental-voice-input-bundle"
+      ]
+    },
+    "work": {
+      "note": "用户工作插件层 —— 迁移时真正需要重建的部分，全部按包名 + semver 范围表达。",
+      "packages": [
+        {
+          "name": "dshmarket",
+          "range": "^1.66.5",
+          "role": "ui",
+          "why": "插件市场：装 / 更 / 卸 / 回滚的统一入口，重建环境时第一个装它"
+        },
+        {
+          "name": "dsh-skill-hub",
+          "range": "0.3.17",
+          "role": "ui",
+          "why": "技能中枢：技能目录、分组开关、市场、上游来源跟踪；技能层迁移的抓手"
+        },
+        {
+          "name": "dsh-excel-chat",
+          "range": "^0.38.1",
+          "role": "tools",
+          "why": "Excel 对话式读写，本工作区的主力交付链路"
+        },
+        {
+          "name": "dsh-better-stats",
+          "range": "^0.1.16",
+          "role": "usage",
+          "why": "输入框下方 Token / 费用统计，让「便宜」可见"
+        },
+        {
+          "name": "dsh-maze",
+          "range": "^2.2.0",
+          "role": "ui",
+          "why": "执行迷宫：失败、重试、子代理分支同轴可视化，稳定性诊断"
+        },
+        {
+          "name": "dsh-find-plugin",
+          "range": "^0.4.0",
+          "role": "tools",
+          "why": "按能力搜插件，避免重复造轮子"
+        },
+        {
+          "name": "@liustack/modlens",
+          "range": "3.26.5",
+          "role": "vision",
+          "why": "modlens 视觉桥：纯文本模型读图"
+        },
+        {
+          "name": "dsh-vision-router",
+          "range": "2.2.7",
+          "role": "vision",
+          "why": "按意图把图片路由给视觉子代理"
+        }
+      ]
+    }
+  },
+  "patchIgnore": [
+    {
+      "id": "ui-settings-account",
+      "why": "引导向导的完成标记（step/purpose/usage），属于人机交互态而非环境要求；新机器上重放会跳过账号引导，因此不进必检清单，export 也不把它当漂移。"
+    },
+    {
+      "id": "ui-chat",
+      "why": "聊天区显示偏好（transcriptView / performanceUsage），个人口味，不参与迁移。"
+    },
+    {
+      "id": "ui-settings",
+      "why": "设置页开关，默认即为 true，无需强制。"
+    },
+    {
+      "id": "ui-settings-general",
+      "why": "welcomeNoticeVersion 是「不再显示欢迎提示」的版本戳，会随 DSH 升级自然变化，属于噪音。"
+    }
+  ],
+  "patch": [
+    {
+      "id": "dsh-tauri-pet",
+      "why": "关闭桌宠，省资源（稳定性优先）",
+      "yaml": "- id: dsh-tauri-pet\n  disabled: true\n"
+    },
+    {
+      "id": "dsh-tauri-pet-skills",
+      "why": "关闭桌宠附带技能，减少上下文噪音",
+      "yaml": "- id: dsh-tauri-pet-skills\n  disabled: true\n"
+    },
+    {
+      "id": "agent-default-model",
+      "why": "默认模型 fixed 到 deepseek-flash + 高强度思考：便宜且够用",
+      "yaml": "- id: agent-default-model\n  name: \"@deepseek-ai/dsh-agent-default-model\"\n  config:\n    provider: deepseek-official\n    model: deepseek-flash\n    reasoningEffort: high\n"
+    },
+    {
+      "id": "subagent-model-selection-settings",
+      "why": "子代理可选模型白名单：显式限制可路由的 provider/model，避免误用高价模型",
+      "yaml": "- id: subagent-model-selection-settings\n  name: \"@deepseek-ai/dsh-tool-subagent/model-selection-settings\"\n  config:\n    enabled: true\n    allowedModels:\n      - provider: deepseek-official\n        model: deepseek-flash\n      - provider: deepseek-modlens-vision\n        model: deepseek-v4-pro\n      - provider: deepseek-official\n        model: deepseek-v4-pro\n      - provider: deepseek-vision\n        model: deepseek-flash\n      - provider: deepseek-vision\n        model: deepseek-v4-pro\n      - provider: deepseek-modlens\n        model: deepseek-v4-pro\n"
+    },
+    {
+      "id": "vision-router",
+      "why": "视觉路由：关闭渐进式工具、跳过引导",
+      "yaml": "- id: vision-router\n  name: dsh-vision-router\n  config:\n    progressiveTools: false\n    onboardingSeen: true\n"
+    }
+  ],
+  "skills": {
+    "note": "项目级技能随工作区迁移；scripts/check_office.py 是 office-xlsx 的共享校验器。",
+    "project": [
+      "office-xlsx",
+      "dsh-env-bootstrap"
+    ],
+    "shared": [
+      "scripts/check_office.py"
+    ]
+  },
+  "verification": {
+    "script": "scripts/verify-env.ps1",
+    "launcher": "run-env.cmd verify",
+    "expectedExit": 0
+  }
+}
